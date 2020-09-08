@@ -1,0 +1,112 @@
+---
+title: "ML Project - Exercise Data"
+author: "Syed Shaheryar Tirmizi"
+date: "9/6/2020"
+output: html_document
+---
+
+## Executive Summary
+Test and Training data sets are given. The data is about the type of exercise of people and how they do it. The basic task is to predict the manner in which they do exercise. Classe variable having 5 classes (A to E) shows their exercise manner. Cross validation is performed and 2 models (random forest and decision trees) are tested. At the end, best model is used to predict the test data.
+
+## Loading Required Libraries
+
+```{r}
+library(caret)
+library(randomForest)
+library(rpart.plot)
+library(rpart)
+library(rattle)
+```
+## Reading the Data
+
+```{r}
+testData <- read.csv("pml-testing.csv", na.strings = c("NA",""))
+trainData <- read.csv("pml-training.csv", na.strings = c("NA",""))
+```
+Empty values are also treated as NA
+
+## Preliminary Analysis
+
+```{r}
+dim(trainData)
+names(trainData)
+str(trainData)
+```
+Let's find out the class of my outcome variable i-e classe variable.
+
+```{r}
+class(trainData$classe)
+```
+
+## Pre Processing
+The data set contains many NA values. In order to use Machine Learning Algorithms, NAs must be removed.
+
+So my approach is to keep only those columns that don't have any NA.
+
+```{r}
+trainData <- trainData[, colSums(is.na(trainData)) == 0]
+testData <- testData[, colSums(is.na(testData)) == 0]
+```
+Also notice that column 1 to 7 are not necessary. So remove them.
+
+```{r}
+trainData <- trainData[, -c(1:7)]
+testData <- testData[, -c(1:7)]
+dim(trainData)
+```
+Now, only 53 columns are in the data set (160 at the start)
+
+## Cross Validation
+For cross validation, divide the training data into sub train and sub test data.
+
+I have partitioned the training data randomly without replacement into sub train and sub test data by the ratio of 0.7
+
+```{r}
+subTraining <- createDataPartition(y = trainData$classe, p = 0.7, list = FALSE)
+subtrainData <- trainData[subTraining,]
+subtestdata <- trainData[-subTraining,]
+```
+## Model-1 Random Forest
+Let's build the first model by using Random Forest.
+
+```{r}
+RFmodel<-randomForest(classe ~. , subtrainData)
+RFpredict<-predict(RFmodel, subtestdata)
+confusionMatrix(RFpredict, subtestdata$classe)
+```
+## Model-2 Decision Tree
+Let's build the model this time with decision tree
+
+```{r}
+rpartModel<-rpart(classe ~ .,subtrainData, method = "class")
+rpartPredict<- predict(rpartModel, subtestdata, type = "class")
+confusionMatrix(rpartPredict, subtestdata$classe)
+```
+Let's visualize the decision tree (Figure 1 in appendix section)
+
+## Best model choice
+The accuracy of Random Forest model is about 99.52 % which is reasonably greater than that of Decision tree i-e 73.05%.
+
+So, Random Forest model is chosen with the out-of-sample error about 0.5% 
+
+## Final Prediction on Test Data
+
+Random Forest Model is applied to predict the category of 20 entries in test data.
+
+```{r}
+finalpredict<-predict(RFmodel, testData)
+finalpredict
+```
+## Appendix
+#### Figure 1 Decision Tree Plot
+
+```{r}
+fancyRpartPlot(rpartModel)
+```
+
+### Data Set 
+Training data set is given here https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+Test Data set is given here https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+To read more about Data set, visit this site http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
